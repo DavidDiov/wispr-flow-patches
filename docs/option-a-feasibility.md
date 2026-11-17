@@ -57,3 +57,21 @@ Ask Wispr to add a public, permission-protected Android `PendingIntent`/deep-lin
 - Do not claim a generic companion service can access Wispr's nonexported `FlowService`.
 - Do not silently switch to OpenAI Whisper or another model and call it Wispr Flow.
 - Do not build an overlay-only solution when the user explicitly rejects overlays.
+
+
+## Additional static APK audit (2026-11-17)
+
+I re-opened the original, unmodified 2.8.7 XAPK and enumerated its Android manifest (including content providers) and Dalvik method call sites directly from `classes2.dex`.
+
+- `FlowService.handleRecordingToggled(Z,Z)` has exactly **two direct method callers** in the relevant DEX: `FlowService.setupUI$lambda$6$0$8$0$1$0(...)` (bubble UI callback) and `FlowService.handleStartDictationFromError(...)` (internal error retry). There is no publicly exported receiver or service method that calls it.
+- `FlowService.onStartCommand` recognizes actions `com.wispr.flowapp.ACTION_SHOW`, `ACTION_HIDE`, `ACTION_HIDE_FROM_ACTIVITY`, `ACTION_REPAIR_ACCESSIBILITY`. These show/hide/recover overlay UI, **not** toggle recording; `FlowService` is not exported.
+- `FlowService.createForegroundNotification(Z)` uses `PendingIntent.getActivity` to launch the app and builds the notification with title `Voice dictation is ready`. The method does not invoke `NotificationCompat.Builder.addAction`, `PendingIntent.getService`, or `RemoteViews.setOnClickPendingIntent` for a dictation toggle. A notification listener cannot use a recording action that doesn't exist.
+- There are no exported Wispr content providers, no `TileService` declared in the manifest, and no Wispr `InputMethodService` declared. An external Gboard patch cannot obtain app-private service objects via reflection from its own process.
+- The only ordinary public app deep-link is `wispr-flow://open`, plus OAuth callback and LinkedIn connection links. There is no declared `startDictation` link.
+- A separate accessibility service can dispatch a gesture to the **visible** Flow Bubble; this still requires the floating bubble and is not compliant with the user's no-bubble requirement. Turning on the separate Wispr accessibility shortcut is explicitly disallowed by Wispr's setup.
+
+**Engineering verdict:** On the app binary inspected, **Option A with an official unchanged Wispr app, zero bubble, zero API, and a working native toolbar start/stop action is not achievable using a verified public Android interface**. No local or remote static analysis can prove the existence of an undocumented, working input route. The existing native Gboard button would be an inert UI until a trigger becomes available.
+
+No patch bundle intended for installation was produced from this audit. Do not uninstall original Wispr; do not alter existing PixelBoard.
+
+**Possible compliant future unblocker:** Wispr exposes a permission-protected Android intent or a developer-supplied `PendingIntent` action to start/stop dictation without billing for their Voice Interface API. This would let a native Morphe Gboard button send a trusted request while leaving official Wispr unchanged.
