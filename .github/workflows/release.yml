@@ -55,4 +55,13 @@ jobs:
         if: steps.release.outputs.new_release_published != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid clean --no-daemon
+        run: ./gradlew clean :patches:buildAndroid --no-daemon
+
+      # Keep experimental patch bundles downloadable without publishing releases.
+      - name: Upload experimental Morphe bundle
+        if: steps.release.outputs.new_release_published != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wispr-flow-287-bridge-mpp
+          path: patches/build/libs/patches-*.mpp
+          if-no-files-found: error
