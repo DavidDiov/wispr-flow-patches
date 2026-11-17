@@ -22,16 +22,14 @@ private object FlowServiceOnCreate : Fingerprint(
     definingClass = SERVICE,
     name = "onCreate",
     returnType = "V",
-    parameters = emptyList(),
-    isStatic = false
+    parameters = emptyList()
 )
 
 private object FlowServiceOnDestroy : Fingerprint(
     definingClass = SERVICE,
     name = "onDestroy",
     returnType = "V",
-    parameters = emptyList(),
-    isStatic = false
+    parameters = emptyList()
 )
 
 /**
